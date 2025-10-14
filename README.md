@@ -138,7 +138,8 @@ if auth.IsValid() {
     userInfo, _ := auth.GetUserInfo()
     fmt.Printf("当前用户: %s\n", userInfo.Name)
 }
-```
+
+
     
     fmt.Printf("登录成功! 用户: %s\n", loginInfo.TokenInfo.Uname)
     
