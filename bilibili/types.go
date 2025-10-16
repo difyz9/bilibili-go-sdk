@@ -112,21 +112,87 @@ type UserBasicInfo struct {
 
 // MyInfoResponse 详细用户信息响应结构 (myinfo API)
 type MyInfoResponse struct {
-	Mid       int64  `json:"mid"`
-	Uname     string `json:"uname"`
-	UserID    string `json:"userid"`
-	Sign      string `json:"sign"`
-	Birthday  string `json:"birthday"`
-	Sex       string `json:"sex"`
-	NickFree  bool   `json:"nick_free"`
-	Rank      string `json:"rank"`
-	Face      string `json:"face"`
-	Level     int    `json:"level"`
-	Silence   int    `json:"silence"`
-	Coins     int    `json:"coins"`
-	Fans      int    `json:"fans"`
-	Friend    int    `json:"friend"`
-	Attention int    `json:"attention"`
+	Mid       int64       `json:"mid"`
+	Name      string      `json:"name"`      // API返回的是name，不是uname
+	Uname     string      `json:"-"`         // 为了兼容性保留，从Name复制
+	UserID    string      `json:"-"`         // API中没有这个字段
+	Sign      string      `json:"sign"`
+	Birthday  interface{} `json:"birthday"` // 可能是字符串或数字
+	Sex       string      `json:"sex"`
+	NickFree  bool        `json:"-"`         // API中没有这个字段
+	Rank      interface{} `json:"rank"`     // 可能是字符串或数字
+	Face      string      `json:"face"`
+	Level     int         `json:"level"`
+	Silence   int         `json:"silence"`
+	Coins     interface{} `json:"coins"`     // 可能是整数或浮点数
+	Follower  int         `json:"follower"`  // 粉丝数
+	Following int         `json:"following"` // 关注数
+	// 为了兼容性保留旧字段名
+	Fans      int `json:"-"`
+	Attention int `json:"-"`
+	Friend    int `json:"-"`
+}
+
+// PostProcess 后处理方法，设置兼容性字段
+func (m *MyInfoResponse) PostProcess() {
+	m.Uname = m.Name
+	m.Fans = m.Follower
+	m.Attention = m.Following
+}
+
+// GetBirthdayString 获取生日字符串
+func (m *MyInfoResponse) GetBirthdayString() string {
+	switch v := m.Birthday.(type) {
+	case string:
+		return v
+	case float64:
+		if v == 0 {
+			return ""
+		}
+		return fmt.Sprintf("%.0f", v)
+	case int:
+		if v == 0 {
+			return ""
+		}
+		return fmt.Sprintf("%d", v)
+	case int64:
+		if v == 0 {
+			return ""
+		}
+		return fmt.Sprintf("%d", v)
+	default:
+		return ""
+	}
+}
+
+// GetCoins 获取硬币数量
+func (m *MyInfoResponse) GetCoins() int {
+	switch v := m.Coins.(type) {
+	case float64:
+		return int(v)
+	case int:
+		return v
+	case int64:
+		return int(v)
+	default:
+		return 0
+	}
+}
+
+// GetRankString 获取排名字符串
+func (m *MyInfoResponse) GetRankString() string {
+	switch v := m.Rank.(type) {
+	case string:
+		return v
+	case float64:
+		return fmt.Sprintf("%.0f", v)
+	case int:
+		return fmt.Sprintf("%d", v)
+	case int64:
+		return fmt.Sprintf("%d", v)
+	default:
+		return ""
+	}
 }
 
 // PartitionType 分区类型

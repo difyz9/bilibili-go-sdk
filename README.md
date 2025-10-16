@@ -138,8 +138,7 @@ if auth.IsValid() {
     userInfo, _ := auth.GetUserInfo()
     fmt.Printf("当前用户: %s\n", userInfo.Name)
 }
-
-
+```
     
     fmt.Printf("登录成功! 用户: %s\n", loginInfo.TokenInfo.Uname)
     
@@ -227,12 +226,8 @@ loginInfo, err := client.PollQRCode(authCode)
 // 获取详细用户信息 (推荐)
 myInfo, err := client.GetMyInfo(cookies)
 
-// 获取基本用户信息
-userInfo, err := client.GetUserBasicInfo(mid, cookies)
-
 // 带重试机制的获取用户信息
 myInfo, err := client.GetMyInfoWithRetry(cookies, 3)
-userInfo, err := client.GetUserBasicInfoWithRetry(mid, cookies, 3)
 ```
 
 #### 分区信息
@@ -373,3 +368,13 @@ MIT License
 ## 贡献
 
 欢迎提交 Issue 和 Pull Request！
+
+## 更新日志
+
+### v1.0.0
+- 初始发布
+- 支持 QR 码登录
+- 支持用户信息获取  
+- 支持视频上传和投稿
+- 支持封面上传
+- 内置重试机制

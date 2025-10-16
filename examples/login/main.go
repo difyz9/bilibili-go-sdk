@@ -39,25 +39,14 @@ func main() {
 	
 	myInfo, err := client.GetMyInfoWithRetry(cookies, 3)
 	if err != nil {
-		log.Printf("获取详细信息失败，尝试获取基本信息: %v", err)
-		
-		// 回退到基本信息
-		userInfo, err := client.GetUserBasicInfoWithRetry(loginInfo.TokenInfo.Mid, cookies, 3)
-		if err != nil {
-			log.Printf("获取基本信息也失败: %v", err)
-		} else {
-			fmt.Printf("用户基本信息:\n")
-			fmt.Printf("  - 用户名: %s\n", userInfo.Name)
-			fmt.Printf("  - 等级: %d\n", userInfo.Level)
-			fmt.Printf("  - 签名: %s\n", userInfo.Sign)
-		}
+		log.Printf("获取用户信息失败: %v", err)
 	} else {
 		fmt.Printf("用户详细信息:\n")
 		fmt.Printf("  - 用户名: %s\n", myInfo.Uname)
 		fmt.Printf("  - 等级: %d\n", myInfo.Level)
 		fmt.Printf("  - 粉丝数: %d\n", myInfo.Fans)
 		fmt.Printf("  - 关注数: %d\n", myInfo.Attention)
-		fmt.Printf("  - 硬币数: %d\n", myInfo.Coins)
+		fmt.Printf("  - 硬币数: %d\n", myInfo.GetCoins())
 		fmt.Printf("  - 签名: %s\n", myInfo.Sign)
 	}
 

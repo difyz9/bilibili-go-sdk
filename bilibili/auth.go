@@ -99,94 +99,7 @@ func (c *Client) PollQRCode(authCode string) (*LoginInfo, error) {
 	}
 }
 
-// GetUserBasicInfo 获取用户基本信息
-func (c *Client) GetUserBasicInfo(mid int64, cookies string) (*UserBasicInfo, error) {
-	url := fmt.Sprintf("https://api.bilibili.com/x/space/acc/info?mid=%d", mid)
-	
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("create request failed: %w", err)
-	}
 
-	req.Header.Set("User-Agent", c.userAgent)
-	req.Header.Set("Referer", "https://www.bilibili.com/")
-	if cookies != "" {
-		req.Header.Set("Cookie", cookies)
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("read response body failed: %w", err)
-	}
-
-	var result ResponseData
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("unmarshal response failed: %w", err)
-	}
-
-	if result.Code != 0 {
-		return nil, fmt.Errorf("get user info failed: code=%d, message=%s", result.Code, result.Message)
-	}
-
-	// 解析用户信息
-	dataBytes, err := json.Marshal(result.Data)
-	if err != nil {
-		return nil, fmt.Errorf("marshal data failed: %w", err)
-	}
-
-	var userInfo UserBasicInfo
-	if err := json.Unmarshal(dataBytes, &userInfo); err != nil {
-		return nil, fmt.Errorf("unmarshal user info failed: %w", err)
-	}
-
-	return &userInfo, nil
-}
-
-// GetUserBasicInfoWithRetry 带重试机制的获取用户基本信息
-func (c *Client) GetUserBasicInfoWithRetry(mid int64, cookies string, maxRetries int) (*UserBasicInfo, error) {
-	if maxRetries <= 0 {
-		maxRetries = 3
-	}
-
-	var lastErr error
-	baseDelay := time.Second
-
-	for attempt := 1; attempt <= maxRetries; attempt++ {
-		userInfo, err := c.GetUserBasicInfo(mid, cookies)
-		if err == nil {
-			return userInfo, nil
-		}
-
-		lastErr = err
-
-		// 如果是最后一次尝试，直接返回错误
-		if attempt == maxRetries {
-			break
-		}
-
-		// 检查是否是限流错误
-		if IsRateLimitError(err) {
-			// 限流错误使用更长的延迟
-			delay := time.Duration(attempt*attempt) * baseDelay * 3
-			if delay > 30*time.Second {
-				delay = 30 * time.Second
-			}
-			time.Sleep(delay)
-		} else {
-			// 其他错误使用较短的延迟
-			delay := time.Duration(attempt) * baseDelay
-			time.Sleep(delay)
-		}
-	}
-
-	return nil, fmt.Errorf("failed after %d attempts, last error: %w", maxRetries, lastErr)
-}
 
 // GetMyInfo 获取当前登录用户的详细信息 (myinfo API)
 func (c *Client) GetMyInfo(cookies string) (*MyInfoResponse, error) {
@@ -231,6 +144,9 @@ func (c *Client) GetMyInfo(cookies string) (*MyInfoResponse, error) {
 	if err := json.Unmarshal(dataBytes, &myInfo); err != nil {
 		return nil, fmt.Errorf("unmarshal my info failed: %w", err)
 	}
+
+	// 设置兼容性字段
+	myInfo.PostProcess()
 
 	return &myInfo, nil
 }

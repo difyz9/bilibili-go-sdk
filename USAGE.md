@@ -80,7 +80,6 @@ go run main.go upload video.mp4   # 上传视频
 - `GetQRCode()` - 获取登录二维码
 - `PollQRCode()` - 轮询登录状态
 - `GetMyInfo()` - 获取用户详细信息
-- `GetUserBasicInfo()` - 获取用户基本信息
 - `GetArchivePre()` - 获取投稿分区信息
 
 ### 上传模块 (upload.go)

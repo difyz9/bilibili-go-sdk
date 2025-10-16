@@ -13,12 +13,17 @@ import (
 
 const loginInfoFile = "login_info.json"
 
+
+// go run complete_example.go upload <视频路径> [封面路径] # 上传视频
+
+// go run examples/complete/main.go upload examples/001.mp4 examples/002.jpg
+
 func main() {
 	// 检查命令行参数
 	if len(os.Args) < 2 {
 		fmt.Println("用法:")
 		fmt.Println("  go run complete_example.go login                    # 登录")
-		fmt.Println("  go run complete_example.go upload <视频路径> [封面路径] # 上传视频")
+		fmt.Println("  go run examples/complete/main.go upload examples/001.mp4 examples/002.jpg # 上传视频")
 		os.Exit(1)
 	}
 
