@@ -18,8 +18,8 @@ type SubtitleUploader struct {
 	loginInfo *LoginInfo
 }
 
-// VideoInfo 视频信息结构
-type VideoInfo struct {
+// SubtitleVideoInfo 字幕相关的视频信息结构
+type SubtitleVideoInfo struct {
 	CID int64 `json:"cid"`
 	AID int64 `json:"aid"`
 }
@@ -73,7 +73,7 @@ func NewSubtitleUploader(client *Client, loginInfo *LoginInfo) *SubtitleUploader
 }
 
 // GetVideoInfo 获取视频信息（CID和AID）
-func (s *SubtitleUploader) GetVideoInfo(bvid string) (*VideoInfo, error) {
+func (s *SubtitleUploader) GetVideoInfo(bvid string) (*SubtitleVideoInfo, error) {
 	url := fmt.Sprintf("https://member.bilibili.com/x/vupre/web/archive/view?bvid=%s", bvid)
 	
 	req, err := http.NewRequest("GET", url, nil)
@@ -121,7 +121,7 @@ func (s *SubtitleUploader) GetVideoInfo(bvid string) (*VideoInfo, error) {
 		return nil, fmt.Errorf("video info is empty")
 	}
 
-	return &VideoInfo{
+	return &SubtitleVideoInfo{
 		CID: response.Data.Videos[0].CID,
 		AID: response.Data.Videos[0].AID,
 	}, nil
