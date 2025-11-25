@@ -16,7 +16,7 @@
 
 # Go workspace file
 go.work
-
+*.json
 # IDE files
 .vscode/
 .idea/

@@ -353,6 +353,34 @@ if bilibili.IsNetworkError(err) {
 }
 ```
 
+## 📚 示例代码
+
+SDK 提供了多个完整的示例代码，位于 `examples/` 目录下：
+
+- **`examples/login/`** - 登录示例（二维码登录）
+- **`examples/user_stats/`** - 获取用户信息和粉丝数
+- **`examples/upload/`** - 视频上传示例
+- **`examples/complete/`** - 完整流程示例（登录、上传、投稿）
+
+运行示例：
+
+```bash
+# 登录示例
+go run examples/login/main.go
+
+# 获取用户信息和粉丝数
+go run examples/user_stats/main.go
+
+# 视频上传示例
+go run examples/upload/main.go
+
+# 完整流程示例
+go run examples/complete/main.go login
+go run examples/complete/main.go upload video.mp4 cover.jpg
+```
+
+更多示例和详细文档，请查看 [EXAMPLES.md](EXAMPLES.md)
+
 ## 注意事项
 
 1. **Cookie 管理**: 登录后的 Cookie 需要妥善保存，用于后续 API 调用

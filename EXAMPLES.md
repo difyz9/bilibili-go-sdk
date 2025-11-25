@@ -5,12 +5,13 @@
 ## 📋 目录
 
 1. [认证登录](#认证登录)
-2. [视频管理](#视频管理)  
-3. [标签管理](#标签管理)
-4. [数据统计](#数据统计)
-5. [直播功能](#直播功能)
-6. [创作者工具](#创作者工具)
-7. [高级用法](#高级用法)
+2. [用户信息](#用户信息)
+3. [视频管理](#视频管理)  
+4. [标签管理](#标签管理)
+5. [数据统计](#数据统计)
+6. [直播功能](#直播功能)
+7. [创作者工具](#创作者工具)
+8. [高级用法](#高级用法)
 
 ## 🔐 认证登录
 
@@ -130,7 +131,74 @@ func cookieAuth() {
 }
 ```
 
-## 📹 视频管理
+## � 用户信息
+
+### 获取当前用户信息和粉丝数
+
+```go
+package main
+
+import (
+    "fmt"
+    "log"
+    
+    "github.com/difyz9/bilibili-go-sdk/bilibili"
+)
+
+func getUserInfo(cookies string) {
+    client := bilibili.NewClient()
+    
+    // 获取当前登录用户的详细信息
+    myInfo, err := client.GetMyInfoWithRetry(cookies, 3)
+    if err != nil {
+        log.Fatal("获取用户信息失败:", err)
+    }
+    
+    // 显示用户信息
+    fmt.Println("当前登录用户信息:")
+    fmt.Printf("  用户ID: %d\n", myInfo.Mid)
+    fmt.Printf("  用户名: %s\n", myInfo.Name)
+    fmt.Printf("  粉丝数: %d\n", myInfo.Follower)
+    fmt.Printf("  关注数: %d\n", myInfo.Following)
+    fmt.Printf("  等级: %d\n", myInfo.Level)
+    fmt.Printf("  硬币数: %d\n", myInfo.GetCoins())
+    fmt.Printf("  签名: %s\n", myInfo.Sign)
+    fmt.Printf("  头像: %s\n", myInfo.Face)
+}
+```
+
+### 获取其他用户的统计信息
+
+```go
+func getPublicUserStats(mid int64) {
+    client := bilibili.NewClient()
+    
+    // 获取用户关系统计（粉丝数、关注数等）
+    userStat, err := client.GetUserStat(mid)
+    if err != nil {
+        log.Fatal("获取用户统计失败:", err)
+    }
+    
+    fmt.Printf("用户 %d 的统计信息:\n", mid)
+    fmt.Printf("  粉丝数: %d\n", userStat.Follower)
+    fmt.Printf("  关注数: %d\n", userStat.Following)
+    fmt.Printf("  悄悄关注: %d\n", userStat.Whisper)
+    fmt.Printf("  黑名单: %d\n", userStat.Black)
+}
+```
+
+### 完整示例
+
+运行示例代码：
+
+```bash
+# 获取用户信息和粉丝数
+go run examples/user_stats/main.go
+```
+
+示例代码位置: `examples/user_stats/main.go`
+
+## �📹 视频管理
 
 ### 视频上传
 
