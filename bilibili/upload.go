@@ -173,3 +173,53 @@ func (uc *UploadClient) UploadVideoFromURL(videoURL, fileName string, fileSize i
 
 	return video, nil
 }
+
+// UploadVideoFromURLConcurrent 从 URL 并发上传视频文件到 Bilibili（推荐使用，速度更快）
+// concurrency: 并发数，建议3-5，0或负数将使用默认值3
+func (uc *UploadClient) UploadVideoFromURLConcurrent(videoURL, fileName string, fileSize int64, concurrency int) (*Video, error) {
+	if concurrency <= 0 {
+		concurrency = 3 // 默认3个并发
+	}
+	
+	log.Printf("🚀 Uploading video from URL (Concurrent): %s, filename: %s, size: %d bytes, concurrency: %d", 
+		videoURL, fileName, fileSize, concurrency)
+
+	// 1. 预上传获取配置
+	preUploadInfo, err := uc.preUpload(fileName, fileSize)
+	if err != nil {
+		return nil, fmt.Errorf("failed to pre-upload: %v", err)
+	}
+
+	// 2. 获取上传ID
+	uploadID, err := uc.getUploadID(preUploadInfo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get upload ID: %v", err)
+	}
+
+	log.Printf("Got upload ID: %s", uploadID)
+
+	// 3. 并发分块上传文件（从URL流式上传）
+	parts, err := uc.uploadChunksFromURLConcurrent(videoURL, preUploadInfo, uploadID, fileSize, concurrency)
+	if err != nil {
+		return nil, fmt.Errorf("failed to upload chunks from URL: %v", err)
+	}
+
+	log.Printf("Uploaded %d chunks from URL concurrently", len(parts))
+
+	// 4. 完成上传
+	video, err := uc.completeUpload(preUploadInfo, uploadID, parts, fileName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to complete upload: %v", err)
+	}
+
+	// 设置 title 为原始文件名（去除扩展名）
+	titleWithoutExt := fileName
+	if ext := filepath.Ext(fileName); ext != "" {
+		titleWithoutExt = strings.TrimSuffix(fileName, ext)
+	}
+	video.Title = titleWithoutExt
+
+	log.Printf("✅ Concurrent upload from URL completed. Video filename: %s, title: %s", video.Filename, video.Title)
+
+	return video, nil
+}
