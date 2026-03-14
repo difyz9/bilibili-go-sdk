@@ -22,7 +22,7 @@ func main() {
 	// 检查命令行参数
 	if len(os.Args) < 2 {
 		fmt.Println("用法:")
-		fmt.Println("  go run complete_example.go login                    # 登录")
+		fmt.Println("  go run examples/complete/main.go login                    # 登录")
 		fmt.Println("  go run examples/complete/main.go upload examples/001.mp4 examples/002.jpg # 上传视频")
 		os.Exit(1)
 	}
@@ -125,9 +125,9 @@ func doUpload(videoPath, coverPath string) {
 
 	// 构建投稿信息
 	studio := &bilibili.Studio{
-		Title:     video.Title,
+		Title:    "Bilibili Go SDK 上传测试视频",
 		Desc:      "使用 Bilibili Go SDK 上传的视频\n\n这是一个测试视频，演示 SDK 的功能。",
-		Tid:       174, // 生活区
+		Tid:       122, // 生活区
 		Cover:     coverURL,
 		Tag:       "SDK,测试,上传,bilibili",
 		Copyright: 1, // 原创
