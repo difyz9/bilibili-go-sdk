@@ -215,6 +215,17 @@ func uploadVideo(cookies string) {
         log.Fatal("视频上传失败:", err)
     }
     
+
+    status, err := client.WaitForVideoReviewPassed(result.BVID, cookies, 15*time.Second, 30*time.Minute)
+    if err != nil {
+        log.Printf("审核未通过或等待超时: %v", err)
+        if status != nil {
+            log.Printf("当前状态: %s", status.StateDesc)
+        }
+        return
+    }
+
+    log.Printf("审核通过: %s", status.BVid)
     fmt.Printf("视频上传成功! 文件名: %s\n", uploadResp.Data.Filename)
     
     // 上传封面
@@ -333,6 +344,25 @@ func getMyVideos(cookies string) {
             i+1, video.Title, video.AID, video.BVid)
         fmt.Printf("   状态: %d, 播放: %d, 时长: %d秒\n", 
             video.State, video.Duration, video.Duration)
+    }
+}
+```
+
+### 查询投稿审核状态
+
+```go
+func getVideoReviewStatus(cookies string) {
+    client := bilibili.NewClient()
+
+    status, err := client.GetVideoReviewStatus("BV1xx411c7mD", cookies)
+    if err != nil {
+        log.Fatal("获取投稿审核状态失败:", err)
+    }
+
+    fmt.Printf("是否通过审核: %v\n", status.Passed)
+    fmt.Printf("当前状态: %s\n", status.StateDesc)
+    if status.RejectReason != "" {
+        fmt.Printf("驳回原因: %s\n", status.RejectReason)
     }
 }
 ```

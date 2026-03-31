@@ -18,6 +18,7 @@ Bilibili API Go SDK，提供哔哩哔哩平台的全方位功能封装。
 - **智能Endpoint选择** - 自动选择最优上传节点
 - **封面上传** - 视频封面图片上传
 - **视频投稿** - 完整的视频发布流程
+- **投稿审核状态** - 查询视频是否通过审核
 - **视频编辑** - 修改视频信息（标题、简介、标签等）
 - **视频删除** - 删除已发布视频
 - **视频列表** - 获取个人视频列表
@@ -237,6 +238,27 @@ myInfo, err := client.GetMyInfoWithRetry(cookies, 3)
 ```go
 // 获取投稿分区列表
 archiveData, err := client.GetArchivePre(cookies)
+```
+
+#### 投稿审核状态
+```go
+status, err := client.GetVideoReviewStatus("BV1xx411c7mD", cookies)
+if err != nil {
+    log.Fatal(err)
+}
+
+fmt.Printf("是否通过: %v\n", status.Passed)
+fmt.Printf("当前状态: %s\n", status.StateDesc)
+if status.RejectReason != "" {
+    fmt.Printf("驳回原因: %s\n", status.RejectReason)
+}
+
+status, err = client.WaitForVideoReviewPassed("BV1xx411c7mD", cookies, 15*time.Second, 30*time.Minute)
+if err != nil {
+    log.Printf("等待审核结束: %v\n", err)
+}
+
+fmt.Printf("最终状态: %s\n", status.StateDesc)
 ```
 
 ### 上传客户端 (UploadClient)
