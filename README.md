@@ -47,6 +47,7 @@ Bilibili API Go SDK，提供哔哩哔哩平台的全方位功能封装。
 ### 🛠️ 创作者工具
 - **创作者信息** - 获取创作者基本信息
 - **草稿管理** - 保存、删除、列表草稿
+- **合集管理** - 获取合集、创建合集、编辑合集和小节
 - **模板管理** - 创建和使用视频模板
 - **批量操作** - 批量处理视频内容
 
@@ -142,6 +143,30 @@ if auth.IsValid() {
     userInfo, _ := auth.GetUserInfo()
     fmt.Printf("当前用户: %s\n", userInfo.Name)
 }
+```
+
+#### 4. 合集管理
+
+```go
+cookies := "SESSDATA=...; bili_jct=..."
+
+client := bilibili.NewClient()
+
+seasonID, err := client.CreateSeason(&bilibili.SeasonCreateRequest{
+    Title: "我的合集",
+    Desc:  "合集简介",
+    Cover: "https://i0.hdslb.com/bfs/archive/example.jpg",
+}, cookies)
+if err != nil {
+    log.Fatal(err)
+}
+
+detail, err := client.GetSeasonSection(seasonID, cookies)
+if err != nil {
+    log.Fatal(err)
+}
+
+fmt.Printf("合集小节: %+v\n", detail.Section)
 ```
     
     fmt.Printf("登录成功! 用户: %s\n", loginInfo.TokenInfo.Uname)

@@ -243,6 +243,48 @@ func uploadVideo(cookies string) {
 }
 ```
 
+## 🛠️ 创作者工具
+
+### 合集管理
+
+```go
+func manageSeason(cookies string) {
+    client := bilibili.NewClient()
+
+    seasonID, err := client.CreateSeason(&bilibili.SeasonCreateRequest{
+        Title: "系列节目",
+        Desc:  "创作中心合集接口示例",
+        Cover: "https://i0.hdslb.com/bfs/archive/example.jpg",
+    }, cookies)
+    if err != nil {
+        log.Fatal("创建合集失败:", err)
+    }
+
+    seasons, err := client.GetSeasonList(&bilibili.SeasonListParams{Page: 1, PageSize: 30}, cookies)
+    if err != nil {
+        log.Fatal("获取合集列表失败:", err)
+    }
+
+    fmt.Printf("当前共有 %d 个合集\n", seasons.Total)
+
+    err = client.EditSeason(&bilibili.SeasonEditRequest{
+        Season: bilibili.SeasonEditInfo{
+            ID:    seasonID,
+            Title: "系列节目-更新版",
+            Cover: "https://i0.hdslb.com/bfs/archive/example.jpg",
+            Desc:  "更新后的简介",
+        },
+    }, cookies)
+    if err != nil {
+        log.Fatal("编辑合集失败:", err)
+    }
+
+    if err := client.DeleteSeason(seasonID, cookies); err != nil {
+        log.Fatal("删除合集失败:", err)
+    }
+}
+```
+
 ### 视频发布
 
 ```go
