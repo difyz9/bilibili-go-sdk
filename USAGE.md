@@ -80,7 +80,16 @@ go run main.go upload video.mp4   # 上传视频
 - `GetQRCode()` - 获取登录二维码
 - `PollQRCode()` - 轮询登录状态
 - `GetMyInfo()` - 获取用户详细信息
+- `GetUserBasicInfo()` - 获取指定用户空间详细信息
 - `GetArchivePre()` - 获取投稿分区信息
+
+### 评论模块 (comment.go)
+- `AddComment()` - 发表评论
+- `LikeComment()` - 点赞或取消点赞评论
+- `HateComment()` - 点踩或取消点踩评论
+- `DeleteComment()` - 删除评论
+- `TopComment()` - 置顶或取消置顶评论
+- `ReportComment()` - 举报评论
 
 ### 上传模块 (upload.go)
 - `UploadVideo()` - 从本地文件上传视频

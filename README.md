@@ -255,8 +255,35 @@ loginInfo, err := client.PollQRCode(authCode)
 // 获取详细用户信息 (推荐)
 myInfo, err := client.GetMyInfo(cookies)
 
+// 获取指定用户基本信息（用户空间详情接口）
+userInfo, err := client.GetUserBasicInfo(2, cookies)
+
 // 带重试机制的获取用户信息
 myInfo, err := client.GetMyInfoWithRetry(cookies, 3)
+```
+
+#### 评论操作
+```go
+// 发表评论
+reply, err := client.AddComment(&bilibili.CommentAddRequest{
+    Type:    1,
+    OID:     243322853,
+    Message: "测试评论",
+}, cookies)
+
+// 点赞评论
+err = client.LikeComment(&bilibili.CommentActionRequest{
+    Type:   1,
+    OID:    243322853,
+    RPID:   reply.RPID,
+    Action: 1,
+}, cookies)
+```
+
+可运行示例：
+
+```bash
+BILIBILI_COOKIES='SESSDATA=xxx; bili_jct=xxx' go run examples/comment/main.go add 1 243322853 '测试评论'
 ```
 
 #### 分区信息

@@ -6,12 +6,13 @@
 
 1. [认证登录](#认证登录)
 2. [用户信息](#用户信息)
-3. [视频管理](#视频管理)  
-4. [标签管理](#标签管理)
-5. [数据统计](#数据统计)
-6. [直播功能](#直播功能)
-7. [创作者工具](#创作者工具)
-8. [高级用法](#高级用法)
+3. [评论操作](#评论操作)
+4. [视频管理](#视频管理)  
+5. [标签管理](#标签管理)
+6. [数据统计](#数据统计)
+7. [直播功能](#直播功能)
+8. [创作者工具](#创作者工具)
+9. [高级用法](#高级用法)
 
 ## 🔐 认证登录
 
@@ -197,6 +198,28 @@ go run examples/user_stats/main.go
 ```
 
 示例代码位置: `examples/user_stats/main.go`
+
+## 评论操作
+
+### 可运行示例
+
+```bash
+# 通过环境变量提供 Cookies，发表评论
+BILIBILI_COOKIES='SESSDATA=xxx; bili_jct=xxx' go run examples/comment/main.go add 1 243322853 '测试评论'
+
+# 点赞评论
+go run examples/comment/main.go like 1 243322853 3039053308
+
+# 举报评论
+go run examples/comment/main.go report 1 243322853 3039053308 4
+```
+
+示例代码位置: `examples/comment/main.go`
+
+说明：
+- `type=1` 表示视频评论区
+- 优先读取环境变量 `BILIBILI_COOKIES`，如果未设置则尝试读取当前目录的 `login.json`
+- `login.json` 可通过登录示例生成
 
 ## �📹 视频管理
 
