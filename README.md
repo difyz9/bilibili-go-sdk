@@ -288,6 +288,12 @@ BILIBILI_COOKIES='SESSDATA=xxx; bili_jct=xxx' go run examples/comment/main.go ad
 
 #### 分区信息
 ```go
+// 获取内置完整视频分区树（无需登录）
+zones := bilibili.GetVideoZones()
+
+// 按 tid 获取当前推荐分区（若 tid 存在重定向/历史别名，会优先返回有效分区）
+zone, ok := bilibili.GetVideoZoneByTID(265)
+
 // 获取投稿分区列表
 archiveData, err := client.GetArchivePre(cookies)
 ```

@@ -153,6 +153,16 @@ SDK内置支持分块上传，自动处理网络中断和重试。
 
 获取完整分区列表：
 ```go
+// 内置完整视频分区字典，无需 Cookie
+zones := bilibili.GetVideoZones()
+
+// 按 tid 查询分区；若同一个 tid 同时存在重定向条目，会优先返回有效分区
+zone, ok := bilibili.GetVideoZoneByTID(176)
+
+// 如果需要保留重定向/重复 tid 的所有匹配项，可使用：
+allMatches := bilibili.FindVideoZonesByTID(176)
+
+// 投稿可用分区仍然建议结合 archive/pre 接口获取
 archiveData, err := client.GetArchivePre(cookies)
 ```
 
