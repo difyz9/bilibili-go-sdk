@@ -18,16 +18,16 @@ func main() {
 	allZones := bilibili.GetAllVideoZones()
 	fmt.Printf("all zones: %d\n", len(allZones))
 
-	zone, ok := bilibili.GetVideoZoneByTID(265)
+	zone, ok := bilibili.GetVideoZoneByTID(122)
 	if !ok {
 		log.Fatal("expected tid 265 to exist")
 	}
 	fmt.Printf("zone for tid 265: %s (parent tid=%d)\n", zone.Name, zone.ParentID)
 
-	matchesByTID := bilibili.FindVideoZonesByTID(176)
+	matchesByTID := bilibili.GetChildVideoZones(36)
 	fmt.Printf("matches for tid 176: %d\n", len(matchesByTID))
 	for _, match := range matchesByTID {
-		fmt.Printf("- %s (tid=%d)\n", match.Name, match.ID)
+		fmt.Printf("-> %s (tid=%d)\n", match.Name, match.ID)
 	}
 
 	matchesBySlug := bilibili.FindVideoZonesBySlug("information")
