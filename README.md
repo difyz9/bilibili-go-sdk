@@ -378,6 +378,28 @@ studio := &bilibili.Studio{
 result, err := uploader.SubmitVideo(studio)
 ```
 
+#### 字幕上传
+```go
+client := bilibili.NewClient()
+uploader := bilibili.NewSubtitleUploader(client, loginInfo)
+
+// SDK 会自动把常见别名标准化为 B 站接受的语言码。
+err := uploader.UploadSubtitle("BV1xx411c7mD", "/path/to/video.zh.srt", "zh-Hans")
+if err != nil {
+    log.Fatal(err)
+}
+
+// 也可以显式使用 SDK 常量。
+err = uploader.UploadSubtitle("BV1xx411c7mD", "/path/to/video.en.srt", bilibili.SubtitleLangEN)
+```
+
+当前内置的语言标准化：
+
+- `zh` / `zh-CN` / `zh-Hans` / `cmn-Hans` -> `zh-CN`
+- `zh-TW` / `zh-Hant` / `cmn-Hant` -> `zh-TW`
+- `en` -> `en`
+- `en-US` -> `en-US`
+
 ## 数据结构
 
 ### LoginInfo - 登录信息

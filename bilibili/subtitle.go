@@ -9,7 +9,19 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
+)
+
+const (
+	// SubtitleLangZhCN is the Bilibili language code for Simplified Chinese subtitles.
+	SubtitleLangZhCN = "zh-CN"
+	// SubtitleLangZhTW is the Bilibili language code for Traditional Chinese subtitles.
+	SubtitleLangZhTW = "zh-TW"
+	// SubtitleLangEN is the Bilibili language code for generic English subtitles.
+	SubtitleLangEN = "en"
+	// SubtitleLangENUS is the Bilibili language code for US English subtitles.
+	SubtitleLangENUS = "en-US"
 )
 
 // SubtitleUploader Bilibili字幕上传器
@@ -49,6 +61,19 @@ type SubtitleSaveResponse struct {
 	TTL     int    `json:"ttl"`
 }
 
+var subtitleLanguageAliases = map[string]string{
+	"zh":       SubtitleLangZhCN,
+	"zh-cn":    SubtitleLangZhCN,
+	"zh-hans":  SubtitleLangZhCN,
+	"cmn":      SubtitleLangZhCN,
+	"cmn-hans": SubtitleLangZhCN,
+	"zh-tw":    SubtitleLangZhTW,
+	"zh-hant":  SubtitleLangZhTW,
+	"cmn-hant": SubtitleLangZhTW,
+	"en":       SubtitleLangEN,
+	"en-us":    SubtitleLangENUS,
+}
+
 // VideoInfoResponse 视频信息响应
 type VideoInfoResponse struct {
 	Code    int    `json:"code"`
@@ -72,10 +97,19 @@ func NewSubtitleUploader(client *Client, loginInfo *LoginInfo) *SubtitleUploader
 	}
 }
 
+// NormalizeSubtitleLanguage converts common app/workflow language tags to Bilibili-accepted subtitle language codes.
+func NormalizeSubtitleLanguage(language string) string {
+	normalized := subtitleLanguageAliases[strings.ToLower(strings.TrimSpace(language))]
+	if normalized != "" {
+		return normalized
+	}
+	return language
+}
+
 // GetVideoInfo 获取视频信息（CID和AID）
 func (s *SubtitleUploader) GetVideoInfo(bvid string) (*SubtitleVideoInfo, error) {
 	url := fmt.Sprintf("https://member.bilibili.com/x/vupre/web/archive/view?bvid=%s", bvid)
-	
+
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create request failed: %w", err)
@@ -202,6 +236,8 @@ func (s *SubtitleUploader) UploadSubtitleFile(subtitlePath string) (string, stri
 
 // SaveSubtitleInfo 保存字幕信息到视频
 func (s *SubtitleUploader) SaveSubtitleInfo(aid, cid int64, location, language string) error {
+	language = NormalizeSubtitleLanguage(language)
+
 	// 获取CSRF Token
 	csrf, err := s.loginInfo.GetCSRFToken()
 	if err != nil {
@@ -273,6 +309,8 @@ func (s *SubtitleUploader) SaveSubtitleInfo(aid, cid int64, location, language s
 
 // UploadSubtitle 完整的字幕上传流程
 func (s *SubtitleUploader) UploadSubtitle(bvid, subtitlePath, language string) error {
+	language = NormalizeSubtitleLanguage(language)
+
 	// 1. 获取视频信息
 	videoInfo, err := s.GetVideoInfo(bvid)
 	if err != nil {

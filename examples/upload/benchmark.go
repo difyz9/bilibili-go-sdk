@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/yourusername/bilibili-go-sdk/bilibili"
+	"github.com/difyz9/bilibili-go-sdk/bilibili"
 )
 
 func main() {
