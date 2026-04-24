@@ -2,11 +2,15 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/difyz9/bilibili-go-sdk/bilibili"
 )
+
+const loginInfoFile = "login_info.json"
 
 func main() {
 	// 创建客户端
@@ -32,6 +36,12 @@ func main() {
 	fmt.Printf("登录成功!\n")
 	fmt.Printf("用户ID: %d\n", loginInfo.TokenInfo.Mid)
 	fmt.Printf("用户名: %s\n", loginInfo.TokenInfo.Uname)
+
+	if err := saveLoginInfo(loginInfo); err != nil {
+		log.Printf("保存登录信息失败: %v", err)
+	} else {
+		fmt.Printf("登录信息已保存到: %s\n", loginInfoFile)
+	}
 
 	// 获取详细用户信息
 	fmt.Println("获取用户详细信息...")
@@ -68,4 +78,17 @@ func main() {
 	}
 
 	fmt.Println("登录演示完成!")
+}
+
+func saveLoginInfo(loginInfo *bilibili.LoginInfo) error {
+	data, err := json.MarshalIndent(loginInfo, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal login info: %w", err)
+	}
+
+	if err := os.WriteFile(loginInfoFile, data, 0600); err != nil {
+		return fmt.Errorf("write login info: %w", err)
+	}
+
+	return nil
 }

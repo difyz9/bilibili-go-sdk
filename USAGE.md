@@ -16,6 +16,7 @@ bilibili-go-sdk/
 │   └── client_test.go  # 单元测试
 ├── examples/           # 使用示例
 │   ├── login/          # 登录示例
+│   ├── subtitle/       # 字幕上传与语言映射验证示例
 │   ├── upload/         # 上传示例
 │   └── complete/       # 完整流程示例
 ├── go.mod              # Go模块定义
@@ -72,6 +73,10 @@ cd examples/login && go run main.go
 cd examples/complete
 go run main.go login              # 先登录
 go run main.go upload video.mp4   # 上传视频
+
+# 字幕上传
+go run examples/subtitle/main.go inspect
+go run examples/subtitle/main.go upload bili_bvid ./examples/subtitle/FM5-R4VPArw.zh.srt zh ./examples/login_info.json
 ```
 
 ## 核心功能
@@ -96,6 +101,11 @@ go run main.go upload video.mp4   # 上传视频
 - `UploadVideoFromURL()` - 从URL上传视频
 - `UploadCover()` - 上传封面图片
 - `SubmitVideo()` - 提交视频投稿
+
+### 字幕模块 (subtitle.go)
+- `UploadSubtitle()` - 读取 SRT、转换为 BCC 并提交字幕草稿
+- `LoadSRTAsBCC()` - 将 SRT 文件转换为 BCC 字幕结构
+- `NormalizeSubtitleLanguage()` - 将常见语言别名标准化为接口接受的 `lan`
 
 ### 配置模块 (config.go)
 - `WithTimeout()` - 设置超时时间
@@ -132,6 +142,41 @@ if bilibili.IsNetworkError(err) {
 ### 断点续传
 
 SDK内置支持分块上传，自动处理网络中断和重试。
+
+### 字幕上传
+
+字幕上传走的是 Bilibili 当前可用的 `draft/save` 流程，SDK 会自动把 SRT 转成接口需要的 BCC JSON。
+
+推荐步骤：
+
+```bash
+# 1. 登录并保存会话
+go run ./examples/login/main.go
+
+# 2. 检查语言映射
+go run ./examples/subtitle/main.go inspect zh zh-Hans zh-TW en-US
+
+# 3. 上传字幕
+go run ./examples/subtitle/main.go upload BV16PoVBjE21 ./examples/subtitle/FM5-R4VPArw.zh.srt zh ./examples/login_info.json
+```
+
+SDK 调用示例：
+
+```go
+client := bilibili.NewClient()
+uploader := bilibili.NewSubtitleUploader(client, loginInfo)
+
+if err := uploader.UploadSubtitle("BV16PoVBjE21", "./examples/subtitle/FM5-R4VPArw.zh.srt", "zh"); err != nil {
+    log.Fatal(err)
+}
+```
+
+说明：
+
+- 上传命令参数为：`upload <bvid> <subtitle.srt> <language> [login_info.json]`
+- 简体中文字幕建议使用 `zh`；`zh-CN`、`zh-Hans`、`cmn-Hans` 会自动归一化到 `zh`
+- 繁体中文字幕会归一化到 `zh-TW`
+- 若未指定登录信息文件，示例默认读取 `./examples/login_info.json`
 
 ## 注意事项
 

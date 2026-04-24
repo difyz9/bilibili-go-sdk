@@ -258,6 +258,33 @@ func uploadVideo(cookies string) {
     coverResp, err := client.UploadCover(coverPath, cookies)
     if err != nil {
         log.Fatal("封面上传失败:", err)
+
+### 字幕上传
+
+可运行示例：
+
+```bash
+# 先登录，生成 examples/login_info.json
+go run ./examples/login/main.go
+
+# 离线查看语言映射到 draft/save 的 lan 结果
+go run examples/subtitle/main.go inspect
+
+# 只查看指定值的映射结果
+go run examples/subtitle/main.go inspect zh zh-Hans en-US
+
+# 实际上传字幕，并打印最终提交的 lan 和 data 摘要
+go run examples/subtitle/main.go upload BV16PoVBjE21 ./examples/subtitle/FM5-R4VPArw.zh.srt zh ./examples/login_info.json
+```
+
+示例代码位置: `examples/subtitle/main.go`
+
+说明：
+- 上传命令参数依次为：`<bvid> <subtitle.srt> <language> [login_info.json]`
+- 若不传 `login_info.json`，默认读取 `./examples/login_info.json`
+- `lan` 是 `draft/save` 接口里真正提交给接口的语言字段
+- 示例会先打印 `NormalizeSubtitleLanguage` 的映射结果，再把 SRT 转成 BCC 并打印实际 `data` 摘要
+- 当前内置验证样例：`zh -> zh`、`zh-Hans -> zh`、`zh-TW -> zh-TW`、`en-US -> en-US`
     }
     
     fmt.Printf("封面上传成功! URL: %s\n", coverResp.Data.URL)

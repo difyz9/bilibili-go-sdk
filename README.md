@@ -384,7 +384,7 @@ client := bilibili.NewClient()
 uploader := bilibili.NewSubtitleUploader(client, loginInfo)
 
 // SDK 会自动把常见别名标准化为 B 站接受的语言码。
-err := uploader.UploadSubtitle("BV1xx411c7mD", "/path/to/video.zh.srt", "zh-Hans")
+err := uploader.UploadSubtitle("BV1xx411c7mD", "/path/to/video.zh.srt", "zh")
 if err != nil {
     log.Fatal(err)
 }
@@ -393,9 +393,28 @@ if err != nil {
 err = uploader.UploadSubtitle("BV1xx411c7mD", "/path/to/video.en.srt", bilibili.SubtitleLangEN)
 ```
 
+命令行示例：
+
+```bash
+# 先登录并保存会话
+go run ./examples/login/main.go
+
+# 查看语言值会被标准化成什么
+go run ./examples/subtitle/main.go inspect zh zh-Hans zh-TW en-US
+
+# 使用保存的登录信息上传 SRT 字幕
+go run ./examples/subtitle/main.go upload BV16PoVBjE21 ./examples/subtitle/FM5-R4VPArw.zh.srt zh ./examples/login_info.json
+```
+
+上传说明：
+
+- SDK 会将 SRT 转成 Bilibili `draft/save` 接口需要的 BCC JSON。
+- `language` 参数最终提交为 `lan` 字段；简体中文建议直接传 `zh`。
+- `examples/login/main.go` 会把登录态写入 `examples/login_info.json`，供字幕示例复用。
+
 当前内置的语言标准化：
 
-- `zh` / `zh-CN` / `zh-Hans` / `cmn-Hans` -> `zh-CN`
+- `zh` / `zh-CN` / `zh-Hans` / `cmn-Hans` -> `zh`
 - `zh-TW` / `zh-Hant` / `cmn-Hant` -> `zh-TW`
 - `en` -> `en`
 - `en-US` -> `en-US`

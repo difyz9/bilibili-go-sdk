@@ -1,12 +1,14 @@
 package bilibili
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -14,8 +16,12 @@ import (
 )
 
 const (
-	// SubtitleLangZhCN is the Bilibili language code for Simplified Chinese subtitles.
-	SubtitleLangZhCN = "zh-CN"
+	// SubtitleLangZh is the currently accepted draft/save language code for Simplified Chinese subtitles.
+	SubtitleLangZh = "zh"
+	// SubtitleLangZhCN is kept as a backward-compatible alias for Simplified Chinese subtitles.
+	SubtitleLangZhCN = SubtitleLangZh
+	// SubtitleLangZhSG remains available because the live endpoint also accepts it.
+	SubtitleLangZhSG = "zh-SG"
 	// SubtitleLangZhTW is the Bilibili language code for Traditional Chinese subtitles.
 	SubtitleLangZhTW = "zh-TW"
 	// SubtitleLangEN is the Bilibili language code for generic English subtitles.
@@ -43,6 +49,24 @@ type SubtitleFile struct {
 	SubtitleID int    `json:"subtitle_id"`
 }
 
+// BCCSubtitleItem is a single Bilibili caption item in BCC format.
+type BCCSubtitleItem struct {
+	From     float64 `json:"from"`
+	To       float64 `json:"to"`
+	Location int     `json:"location"`
+	Content  string  `json:"content"`
+}
+
+// BCCSubtitle is the subtitle payload expected by the draft/save endpoint.
+type BCCSubtitle struct {
+	FontSize        float64           `json:"font_size"`
+	FontColor       string            `json:"font_color"`
+	BackgroundAlpha float64           `json:"background_alpha"`
+	BackgroundColor string            `json:"background_color"`
+	Stroke          string            `json:"Stroke"`
+	Body            []BCCSubtitleItem `json:"body"`
+}
+
 // SubtitleUploadResponse 字幕上传响应
 type SubtitleUploadResponse struct {
 	Code    int    `json:"code"`
@@ -62,11 +86,11 @@ type SubtitleSaveResponse struct {
 }
 
 var subtitleLanguageAliases = map[string]string{
-	"zh":       SubtitleLangZhCN,
-	"zh-cn":    SubtitleLangZhCN,
-	"zh-hans":  SubtitleLangZhCN,
-	"cmn":      SubtitleLangZhCN,
-	"cmn-hans": SubtitleLangZhCN,
+	"zh":       SubtitleLangZh,
+	"zh-cn":    SubtitleLangZh,
+	"zh-hans":  SubtitleLangZh,
+	"cmn":      SubtitleLangZh,
+	"cmn-hans": SubtitleLangZh,
 	"zh-tw":    SubtitleLangZhTW,
 	"zh-hant":  SubtitleLangZhTW,
 	"cmn-hant": SubtitleLangZhTW,
@@ -104,6 +128,48 @@ func NormalizeSubtitleLanguage(language string) string {
 		return normalized
 	}
 	return language
+}
+
+// ParseSRTToBCC converts SRT text into Bilibili's BCC subtitle format.
+func ParseSRTToBCC(content string) (*BCCSubtitle, error) {
+	content = strings.ReplaceAll(content, "\r\n", "\n")
+	content = strings.ReplaceAll(content, "\r", "\n")
+
+	blocks := splitSubtitleBlocks(content)
+	items := make([]BCCSubtitleItem, 0, len(blocks))
+
+	for _, block := range blocks {
+		item, ok, err := parseSRTBlock(block)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			items = append(items, item)
+		}
+	}
+
+	if len(items) == 0 {
+		return nil, fmt.Errorf("subtitle body is empty")
+	}
+
+	return &BCCSubtitle{
+		FontSize:        0.4,
+		FontColor:       "#FFFFFF",
+		BackgroundAlpha: 0.5,
+		BackgroundColor: "#9C27B0",
+		Stroke:          "none",
+		Body:            items,
+	}, nil
+}
+
+// LoadSRTAsBCC reads an SRT file and converts it into BCC subtitle data.
+func LoadSRTAsBCC(subtitlePath string) (*BCCSubtitle, error) {
+	data, err := os.ReadFile(subtitlePath)
+	if err != nil {
+		return nil, fmt.Errorf("read subtitle file failed: %w", err)
+	}
+
+	return ParseSRTToBCC(string(data))
 }
 
 // GetVideoInfo 获取视频信息（CID和AID）
@@ -307,6 +373,64 @@ func (s *SubtitleUploader) SaveSubtitleInfo(aid, cid int64, location, language s
 	return nil
 }
 
+// SaveSubtitleDraft saves BCC subtitle data directly through the current draft/save endpoint.
+func (s *SubtitleUploader) SaveSubtitleDraft(bvid string, cid int64, subtitle *BCCSubtitle, language string) error {
+	language = NormalizeSubtitleLanguage(language)
+
+	csrf, err := s.loginInfo.GetCSRFToken()
+	if err != nil {
+		return fmt.Errorf("get CSRF token failed: %w", err)
+	}
+
+	encodedSubtitle, err := json.Marshal(subtitle)
+	if err != nil {
+		return fmt.Errorf("marshal subtitle data failed: %w", err)
+	}
+
+	form := url.Values{}
+	form.Set("lan", language)
+	form.Set("submit", "true")
+	form.Set("csrf", csrf)
+	form.Set("sign", "false")
+	form.Set("bvid", bvid)
+	form.Set("type", "1")
+	form.Set("oid", strconv.FormatInt(cid, 10))
+	form.Set("data", string(encodedSubtitle))
+
+	req, err := http.NewRequest("POST", "https://api.bilibili.com/x/v2/dm/subtitle/draft/save", strings.NewReader(form.Encode()))
+	if err != nil {
+		return fmt.Errorf("create save draft request failed: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Cookie", s.loginInfo.GetCookieString())
+	req.Header.Set("User-Agent", s.client.userAgent)
+	req.Header.Set("Origin", "https://account.bilibili.com")
+	req.Header.Set("Referer", fmt.Sprintf("https://account.bilibili.com/subtitle/edit/#/editor?bvid=%s&cid=%d", bvid, cid))
+
+	resp, err := s.client.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("save draft request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read save draft response failed: %w", err)
+	}
+
+	var response SubtitleSaveResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		return fmt.Errorf("unmarshal save draft response failed: %w", err)
+	}
+
+	if response.Code != 0 {
+		return fmt.Errorf("save subtitle draft failed: code=%d, message=%s", response.Code, response.Message)
+	}
+
+	return nil
+}
+
 // UploadSubtitle 完整的字幕上传流程
 func (s *SubtitleUploader) UploadSubtitle(bvid, subtitlePath, language string) error {
 	language = NormalizeSubtitleLanguage(language)
@@ -317,16 +441,16 @@ func (s *SubtitleUploader) UploadSubtitle(bvid, subtitlePath, language string) e
 		return fmt.Errorf("get video info failed: %w", err)
 	}
 
-	// 2. 上传字幕文件
-	location, _, err := s.UploadSubtitleFile(subtitlePath)
+	// 2. 将 SRT 转换为当前接口要求的 BCC JSON
+	subtitle, err := LoadSRTAsBCC(subtitlePath)
 	if err != nil {
-		return fmt.Errorf("upload subtitle file failed: %w", err)
+		return fmt.Errorf("load subtitle data failed: %w", err)
 	}
 
-	// 3. 保存字幕信息
-	err = s.SaveSubtitleInfo(videoInfo.AID, videoInfo.CID, location, language)
+	// 3. 直接保存字幕草稿
+	err = s.SaveSubtitleDraft(bvid, videoInfo.CID, subtitle, language)
 	if err != nil {
-		return fmt.Errorf("save subtitle info failed: %w", err)
+		return fmt.Errorf("save subtitle draft failed: %w", err)
 	}
 
 	return nil
@@ -336,4 +460,100 @@ func (s *SubtitleUploader) UploadSubtitle(bvid, subtitlePath, language string) e
 func (c *Client) UploadSubtitle(loginInfo *LoginInfo, bvid, subtitlePath, language string) error {
 	uploader := NewSubtitleUploader(c, loginInfo)
 	return uploader.UploadSubtitle(bvid, subtitlePath, language)
+}
+
+func splitSubtitleBlocks(content string) [][]string {
+	scanner := bufio.NewScanner(strings.NewReader(content))
+	var blocks [][]string
+	var current []string
+
+	for scanner.Scan() {
+		line := strings.TrimRight(scanner.Text(), "\n")
+		if strings.TrimSpace(line) == "" {
+			if len(current) > 0 {
+				blocks = append(blocks, current)
+				current = nil
+			}
+			continue
+		}
+		current = append(current, line)
+	}
+
+	if len(current) > 0 {
+		blocks = append(blocks, current)
+	}
+
+	return blocks
+}
+
+func parseSRTBlock(lines []string) (BCCSubtitleItem, bool, error) {
+	if len(lines) < 2 {
+		return BCCSubtitleItem{}, false, nil
+	}
+
+	timeIndex := 0
+	if _, err := strconv.Atoi(strings.TrimSpace(lines[0])); err == nil {
+		timeIndex = 1
+	}
+	if len(lines) <= timeIndex+1 {
+		return BCCSubtitleItem{}, false, fmt.Errorf("invalid subtitle block: %v", lines)
+	}
+
+	parts := strings.Split(lines[timeIndex], "-->")
+	if len(parts) != 2 {
+		return BCCSubtitleItem{}, false, fmt.Errorf("invalid subtitle timing line: %s", lines[timeIndex])
+	}
+
+	from, err := parseSRTTimestamp(parts[0])
+	if err != nil {
+		return BCCSubtitleItem{}, false, err
+	}
+	to, err := parseSRTTimestamp(parts[1])
+	if err != nil {
+		return BCCSubtitleItem{}, false, err
+	}
+
+	content := strings.TrimSpace(strings.Join(lines[timeIndex+1:], "\n"))
+	if content == "" {
+		content = " "
+	}
+
+	return BCCSubtitleItem{
+		From:     from,
+		To:       to,
+		Location: 2,
+		Content:  content,
+	}, true, nil
+}
+
+func parseSRTTimestamp(value string) (float64, error) {
+	value = strings.TrimSpace(value)
+	parts := strings.Split(value, ",")
+	if len(parts) != 2 {
+		return 0, fmt.Errorf("invalid subtitle timestamp: %s", value)
+	}
+
+	timeParts := strings.Split(parts[0], ":")
+	if len(timeParts) != 3 {
+		return 0, fmt.Errorf("invalid subtitle timestamp: %s", value)
+	}
+
+	hours, err := strconv.Atoi(timeParts[0])
+	if err != nil {
+		return 0, fmt.Errorf("invalid subtitle hours: %w", err)
+	}
+	minutes, err := strconv.Atoi(timeParts[1])
+	if err != nil {
+		return 0, fmt.Errorf("invalid subtitle minutes: %w", err)
+	}
+	seconds, err := strconv.Atoi(timeParts[2])
+	if err != nil {
+		return 0, fmt.Errorf("invalid subtitle seconds: %w", err)
+	}
+	milliseconds, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return 0, fmt.Errorf("invalid subtitle milliseconds: %w", err)
+	}
+
+	return float64(hours*3600+minutes*60+seconds) + float64(milliseconds)/1000, nil
 }
