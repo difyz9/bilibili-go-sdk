@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/difyz9/bilibili-go-sdk/bilibili"
 )
@@ -100,7 +101,9 @@ func doUpload(videoPath, coverPath string) {
 	fmt.Printf("使用已保存的登录信息 (用户: %s)\n", loginInfo.TokenInfo.Uname)
 
 	// 创建上传客户端
+	client := bilibili.NewClient()
 	uploader := bilibili.NewUploadClient(loginInfo)
+	cookies := loginInfo.GetCookieString()
 
 	// 上传视频
 	fmt.Printf("开始上传视频: %s\n", videoPath)
@@ -123,26 +126,95 @@ func doUpload(videoPath, coverPath string) {
 		}
 	}
 
+	selectedTid := 122
+	selectedHumanType2 := 0
+	desc := "使用 Bilibili Go SDK 上传的视频\n\n这是一个测试视频，演示 Web 投稿链路。"
+
+	// 预测分区
+	fmt.Println("开始预测稿件分区...")
+	predictions, err := uploader.PredictArchiveTypes(&bilibili.ArchiveTypePredictRequest{
+		Filename: video.Filename,
+		Title:    "Bilibili Go SDK 上传测试视频",
+	})
+	if err != nil {
+		log.Printf("⚠️ 稿件分区预测失败，回退到默认分区 %d: %v", selectedTid, err)
+	} else if len(predictions) > 0 {
+		selectedTid = predictions[0].ID
+		if predictions[0].HumanType != nil {
+			selectedHumanType2 = predictions[0].HumanType.ID
+		}
+		fmt.Printf("✅ 预测分区: %d - %s/%s\n", predictions[0].ID, predictions[0].ParentName, predictions[0].Name)
+	}
+
+	// 推荐标签
+	fmt.Println("开始获取推荐标签...")
+	tags, err := client.RecommendTags(&bilibili.TagRecommendRequest{
+		SubtypeID:   selectedTid,
+		Title:       "Bilibili Go SDK 上传测试视频",
+		Filename:    video.Filename,
+		Description: desc,
+		CoverURL:    coverURL,
+	}, cookies)
+	if err != nil {
+		log.Printf("⚠️ 标签推荐失败，回退到默认标签: %v", err)
+	}
+
+	tagNames := []string{"SDK", "测试", "上传", "bilibili"}
+	if len(tags) > 0 {
+		tagNames = make([]string, 0, len(tags))
+		for _, tag := range tags {
+			name := strings.TrimSpace(tag.Name)
+			if name == "" {
+				name = strings.TrimSpace(tag.Tag)
+			}
+			if name == "" {
+				continue
+			}
+			valid, validErr := client.CheckTag(name)
+			if validErr != nil {
+				log.Printf("⚠️ 校验标签 %q 失败，跳过: %v", name, validErr)
+				continue
+			}
+			if valid {
+				tagNames = append(tagNames, name)
+			}
+			if len(tagNames) >= 5 {
+				break
+			}
+		}
+		if len(tagNames) == 0 {
+			tagNames = []string{"SDK", "测试", "上传", "bilibili"}
+		}
+		fmt.Printf("✅ 推荐标签: %s\n", strings.Join(tagNames, ","))
+	}
+
 	// 构建投稿信息
 	studio := &bilibili.Studio{
-		Title:    "Bilibili Go SDK 上传测试视频",
-		Desc:      "使用 Bilibili Go SDK 上传的视频\n\n这是一个测试视频，演示 SDK 的功能。",
-		Tid:       122, // 生活区
-		Cover:     coverURL,
-		Tag:       "SDK,测试,上传,bilibili",
-		Copyright: 1, // 原创
-		Videos:    []bilibili.Video{*video},
+		Title:      "Bilibili Go SDK 上传测试视频",
+		Desc:       desc,
+		Tid:        selectedTid,
+		Cover:      coverURL,
+		Tag:        bilibili.FormatTags(tagNames),
+		Copyright:  1, // 原创
+		Videos:     []bilibili.Video{*video},
+		DescFormatId: 9999,
+		Recreate:   -1,
+		WebOS:      3,
 		
 		OpenSubtitle:  false,
 		Interactive:   0,
+		NoDisturbance: 0,
 		NoReprint:     1,
 		OpenElec:      1,
 		Dolby:         0,
 		LosslessMusic: 0,
 	}
+	if selectedHumanType2 > 0 {
+		studio.HumanType2 = selectedHumanType2
+	}
 
 	// 提交投稿
-	fmt.Println("开始提交投稿...")
+	fmt.Printf("开始 Web 投稿: tid=%d, human_type2=%d, tags=%s\n", studio.Tid, studio.HumanType2, studio.Tag)
 	result, err := uploader.SubmitVideo(studio)
 	if err != nil {
 		log.Fatalf("投稿提交失败: %v", err)

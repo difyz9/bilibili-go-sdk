@@ -188,6 +188,7 @@ package main
 
 import (
     "log"
+    "strings"
     
     "github.com/difyz9/bilibili-go-sdk/bilibili"
 )
@@ -196,8 +197,10 @@ func main() {
     // 首先需要登录获取 loginInfo
     // ... (登录代码省略)
     
+    client := bilibili.NewClient()
     // 创建上传客户端
     uploader := bilibili.NewUploadClient(loginInfo)
+    cookies := loginInfo.GetCookieString()
     
     // 上传视频文件
     video, err := uploader.UploadVideo("/path/to/your/video.mp4")
@@ -210,19 +213,63 @@ func main() {
     if err != nil {
         log.Fatal(err)
     }
-    
-    // 构建投稿信息
-    studio := &bilibili.Studio{
-        Title:     "我的视频标题",
-        Desc:      "视频描述内容",
-        Tid:       174, // 分区ID（生活区）
-        Cover:     coverURL,
-        Tag:       "标签1,标签2,标签3",
-        Copyright: 1, // 原创
-        Videos:    []bilibili.Video{*video},
+
+    // 预测分区
+    tid := 122
+    humanType2 := 0
+    predictions, err := uploader.PredictArchiveTypes(&bilibili.ArchiveTypePredictRequest{
+        Filename: video.Filename,
+        Title:    "我的视频标题",
+    })
+    if err == nil && len(predictions) > 0 {
+        tid = predictions[0].ID
+        if predictions[0].HumanType != nil {
+            humanType2 = predictions[0].HumanType.ID
+        }
+    }
+
+    // 推荐标签
+    desc := "视频描述内容"
+    tagNames := []string{"标签1", "标签2", "标签3"}
+    tags, err := client.RecommendTags(&bilibili.TagRecommendRequest{
+        SubtypeID:   tid,
+        Title:       "我的视频标题",
+        Filename:    video.Filename,
+        Description: desc,
+        CoverURL:    coverURL,
+    }, cookies)
+    if err == nil && len(tags) > 0 {
+        tagNames = tagNames[:0]
+        for _, tag := range tags {
+            name := strings.TrimSpace(tag.Name)
+            if name == "" {
+                name = strings.TrimSpace(tag.Tag)
+            }
+            if name != "" {
+                tagNames = append(tagNames, name)
+            }
+            if len(tagNames) >= 5 {
+                break
+            }
+        }
     }
     
-    // 提交投稿
+    // 构建 Web 投稿信息
+    studio := &bilibili.Studio{
+        Title:        "我的视频标题",
+        Desc:         desc,
+        Tid:          tid,
+        HumanType2:   humanType2,
+        Cover:        coverURL,
+        Tag:          bilibili.FormatTags(tagNames),
+        Copyright:    1,
+        DescFormatId: 9999,
+        Recreate:     -1,
+        WebOS:        3,
+        Videos:       []bilibili.Video{*video},
+    }
+    
+    // 提交 Web 投稿
     result, err := uploader.SubmitVideo(studio)
     if err != nil {
         log.Fatal(err)
@@ -365,17 +412,44 @@ coverURL, err := uploader.UploadCover("/path/to/cover.jpg")
 
 #### 视频投稿
 ```go
+// 1. 上传视频后会自动拿到 filename 和 cid
 studio := &bilibili.Studio{
-    Title:     "视频标题",
-    Desc:      "视频描述", 
-    Tid:       174,
-    Cover:     coverURL,
-    Tag:       "标签1,标签2",
-    Copyright: 1,
-    Videos:    []bilibili.Video{*video},
+    Title:        "视频标题",
+    Desc:         "视频描述",
+    Tid:          174,
+    Cover:        coverURL,
+    Tag:          "标签1,标签2",
+    Copyright:    1,
+    DescFormatId: 9999,
+    Recreate:     -1,
+    WebOS:        3,
+    Videos:       []bilibili.Video{*video},
 }
 
 result, err := uploader.SubmitVideo(studio)
+```
+
+#### Web 投稿辅助接口
+```go
+// 预测稿件分区
+predictions, err := uploader.PredictArchiveTypes(&bilibili.ArchiveTypePredictRequest{
+    Filename: video.Filename,
+    Title:    "视频标题",
+})
+
+// 获取推荐标签
+tags, err := client.RecommendTags(&bilibili.TagRecommendRequest{
+    SubtypeID:   predictions[0].ID,
+    Title:       "视频标题",
+    Filename:    video.Filename,
+    Description: "视频描述",
+    CoverURL:    coverURL,
+}, cookies)
+
+// 获取新分区列表 / 模板 / 话题
+humanTypes, err := uploader.GetHumanTypeList()
+templates, err := uploader.GetUploadTemplates()
+topics, err := uploader.QueryTopics(&bilibili.TopicQueryRequest{PN: 0, PS: 20})
 ```
 
 #### 字幕上传
@@ -448,13 +522,17 @@ type MyInfoResponse struct {
 ### Studio - 投稿信息
 ```go
 type Studio struct {
-    Title     string  `json:"title"`
-    Desc      string  `json:"desc"`
-    Tid       int     `json:"tid"`
-    Cover     string  `json:"cover"`
-    Tag       string  `json:"tag"`
-    Copyright int     `json:"copyright"`
-    Videos    []Video `json:"videos"`
+    Title            string       `json:"title"`
+    Desc             string       `json:"desc,omitempty"`
+    Tid              int          `json:"tid"`
+    HumanType2       int          `json:"human_type2,omitempty"`
+    Cover            string       `json:"cover,omitempty"`
+    Tag              string       `json:"tag"`
+    Copyright        int          `json:"copyright"`
+    DescFormatId     int          `json:"desc_format_id"`
+    Recreate         int          `json:"recreate,omitempty"`
+    WebOS            int          `json:"web_os,omitempty"`
+    Videos           []Video      `json:"videos"`
     // ... 更多字段
 }
 ```
@@ -507,7 +585,7 @@ SDK 提供了多个完整的示例代码，位于 `examples/` 目录下：
 - **`examples/login/`** - 登录示例（二维码登录）
 - **`examples/user_stats/`** - 获取用户信息和粉丝数
 - **`examples/upload/`** - 视频上传示例
-- **`examples/complete/`** - 完整流程示例（登录、上传、投稿）
+- **`examples/complete/`** - 完整 Web 投稿流程示例（登录、上传、分区预测、标签推荐、投稿）
 
 运行示例：
 

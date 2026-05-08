@@ -41,11 +41,11 @@ func main() {
 		Title:         "我的视频标题",
 		Tid:           122, // 分区ID，122=野生技能协会
 		Tag:           "标签1,标签2,标签3",
-		Description:   "这是视频描述",
+		Desc:          "这是视频描述",
 		Copyright:     1, // 1=自制，2=转载
 		Source:        "",
 		Cover:         "https://your-cover-url.jpg", // 封面图URL
-		Videos:        []*bilibili.Video{video},
+		Videos:        []bilibili.Video{*video},
 		NoReprint:     1,  // 1=允许转载，0=不允许
 		OpenElec:      1,  // 1=开启充电，0=关闭
 		Recreate:      -1, // -1=允许二创，1=不允许

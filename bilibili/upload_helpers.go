@@ -500,6 +500,7 @@ func (uc *UploadClient) completeUpload(preInfo *PreUploadInfo, uploadID string, 
 		Title:    "", // 将在 UploadVideo 中设置
 		Filename: fileNameWithoutExt,
 		Desc:     "",
+		CID:      preInfo.BizId,
 	}, nil
 }
 

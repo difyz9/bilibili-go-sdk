@@ -48,17 +48,47 @@ qrResp, err := client.GetQRCode()
 loginInfo, err := client.PollQRCode(qrResp.Data.AuthCode)
 
 // 创建上传客户端
+client := bilibili.NewClient()
 uploader := bilibili.NewUploadClient(loginInfo)
+cookies := loginInfo.GetCookieString()
 
 // 上传视频
 video, err := uploader.UploadVideo("/path/to/video.mp4")
 
+// 预测分区
+predictions, err := uploader.PredictArchiveTypes(&bilibili.ArchiveTypePredictRequest{
+    Filename: video.Filename,
+    Title:    "视频标题",
+})
+
+tid := 174
+if err == nil && len(predictions) > 0 {
+    tid = predictions[0].ID
+}
+
+// 推荐标签
+tags, err := client.RecommendTags(&bilibili.TagRecommendRequest{
+    SubtypeID:   tid,
+    Title:       "视频标题",
+    Filename:    video.Filename,
+    Description: "视频描述",
+}, cookies)
+
+tagNames := []string{"标签1", "标签2"}
+if err == nil && len(tags) > 0 {
+    tagNames = []string{tags[0].Name}
+}
+
 // 投稿
 studio := &bilibili.Studio{
-    Title: "视频标题",
-    Desc:  "视频描述",
-    Tid:   174, // 分区ID
-    Videos: []bilibili.Video{*video},
+    Title:        "视频标题",
+    Desc:         "视频描述",
+    Tid:          tid,
+    Tag:          bilibili.FormatTags(tagNames),
+    DescFormatId: 9999,
+    Recreate:     -1,
+    WebOS:        3,
+    Videos:       []bilibili.Video{*video},
 }
 result, err := uploader.SubmitVideo(studio)
 ```
@@ -100,7 +130,19 @@ go run examples/subtitle/main.go upload bili_bvid ./examples/subtitle/FM5-R4VPAr
 - `UploadVideo()` - 从本地文件上传视频
 - `UploadVideoFromURL()` - 从URL上传视频
 - `UploadCover()` - 上传封面图片
-- `SubmitVideo()` - 提交视频投稿
+- `SubmitVideo()` - 使用 Web 接口提交视频投稿
+
+### 创作中心投稿辅助接口
+- `PredictArchiveTypes()` - 预测稿件分区
+- `GetHumanTypeList()` - 获取新分区列表
+- `GetUploadTemplates()` - 获取上传模板列表
+- `UpdateUploadTemplate()` - 编辑上传模板
+- `QueryTopics()` - 查询话题
+- `SearchTopics()` - 搜索话题
+- `GetArchiveDescFormat()` - 获取简介格式信息
+- `ProbeUploadLines()` - 获取上传线路
+- `RecommendTags()` - 获取推荐标签
+- `CheckTag()` - 校验标签是否可用
 
 ### 字幕模块 (subtitle.go)
 - `UploadSubtitle()` - 读取 SRT、转换为 BCC 并提交字幕草稿
